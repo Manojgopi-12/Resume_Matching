@@ -23,25 +23,38 @@ async def upload_(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not text or text.startswith("SCAN DETECTED"):
         return {"error": "Unable to extract text"}
 
-    # 2. Embed with LLaMA3
+    # 2. Embed with nomic-embed-text
     embedding_vector = embedder.get_embedding(text)
 
-    # 3. Insert into Postgres
-    resume_id = str(uuid.uuid4())
+    # 3. Extract fields for resumes2
+    parsed = ollama_client.extract_resume_fields(text)
+
+    # 4. Insert into resumes2 table
     raw_conn = psycopg2.connect("dbname=postgres user=postgres password=Manojgopi@12")
     cursor = raw_conn.cursor()
     cursor.execute(
         """
-        INSERT INTO resumes2 (id, filename, raw_text, embedding)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO resumes2 (name, email, phone, linkedin, address, skills, experience, education, summary, embedding)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
-        [resume_id, file.filename, text, embedding_vector]
+        [
+            parsed.get("name", ""),
+            parsed.get("email", ""),
+            parsed.get("phone", ""),
+            parsed.get("linkedin", ""),
+            parsed.get("address", ""),
+            parsed.get("skills", ""),
+            parsed.get("experience", ""),
+            parsed.get("education", ""),
+            parsed.get("summary", ""),
+            embedding_vector
+        ]
     )
     raw_conn.commit()
     cursor.close()
     raw_conn.close()
 
-    return {"id": resume_id, "filename": file.filename, "raw_text": text}
+    return {"name": parsed.get("name", ""), "raw_text": text}
 
 
 
@@ -73,21 +86,22 @@ async def query_resume(request: schemas.QueryRequest):
 
     resume_id, filename, raw_text = result
 
-    # 4. Use LLaMA3 to parse the retrieved resume text
-    parsed = ollama_client.llama3_parse_fields(raw_text)
+    # 4. Extract fields for the new resumes table
+    parsed = ollama_client.extract_resume_fields(raw_text)
 
-    # 5. Return all required fields
+    # 5. Return all required fields (matching the new table)
     response = {
         "id": resume_id,
         "filename": filename,
         "name": parsed.get("name", ""),
-        "phone_number": parsed.get("phone_number", ""),
-        "linkedin_url": parsed.get("linkedin_url", ""),
         "email": parsed.get("email", ""),
-        "location": parsed.get("location", ""),
-        "skills": parsed.get("skills", []),
+        "phone": parsed.get("phone", ""),
+        "linkedin": parsed.get("linkedin", ""),
+        "address": parsed.get("address", ""),
+        "skills": parsed.get("skills", ""),
         "experience": parsed.get("experience", ""),
-        "profile_summary": parsed.get("profile_summary", ""),
+        "education": parsed.get("education", ""),
+        "summary": parsed.get("summary", ""),
         "raw_text": raw_text
     }
 

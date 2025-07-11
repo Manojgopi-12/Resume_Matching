@@ -1,20 +1,20 @@
 import ollama
 import json
 
-def llama3_embed(text):
+def nomic_embed_text(text):
     """
-    Call Ollama locally to get embeddings using LLaMA3.
+    Call Ollama locally to get embeddings using nomic-embed-text model.
     """
     response = ollama.embeddings(
-        model="llama3",
+        model="nomic-embed-text",
         prompt=text
     )
     return response['embedding']
 
 
-def llama3_parse_fields(resume_text):
+def extract_resume_fields(resume_text):
     """
-    Call Ollama locally to parse a resume into structured fields.
+    Call Ollama locally to parse a resume into structured fields for the resumes table.
     Always requests these exact fields in JSON.
     """
     prompt = f"""
@@ -22,23 +22,22 @@ You are an expert resume parser.
 Your task is to extract the following fields from the given resume text.
 
 Return ONLY valid JSON with the following keys:
-
 {{
   "name": "",
-  "phone_number": "",
-  "linkedin_url": "",
   "email": "",
-  "location": "",
-  "skills": [],
+  "phone": "",
+  "linkedin": "",
+  "address": "",
+  "skills": "",
   "experience": "",
-  "profile_summary": ""
+  "education": "",
+  "summary": ""
 }}
 
 Be concise, clear, and consistent.
 Do NOT include any markdown or explanation. Only output the JSON.
 
 Resume text:
-
 ---
 {resume_text}
 """

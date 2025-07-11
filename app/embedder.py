@@ -1,4 +1,4 @@
-from .ollama_client import llama3_embed
+from .ollama_client import nomic_embed_text
 
 def get_embedding(text: str) -> list:
-    return llama3_embed(text)
+    return nomic_embed_text(text)
